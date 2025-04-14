@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title data-i18n="title"></title>
+    <style>
+        :root {
+            --one-cost-color: #ababab;
+            --two-cost-color: #64ff64;
+            --three-cost-color: #55e5ff;
+            --four-cost-color: #e46dff;
+        }
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            position: relative;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            column-gap: 20px;
+            row-gap: 10px;
+            margin-bottom: 20px;
+        }
+        .trait-row {
+            display: flex;
+            align-items: center;
+            font-size: 1.1em;
+        }
+        .trait-input {
+            display: flex;
+            align-items: center;
+            margin-right: 10px;
+        }
+        .trait-input button {
+            width: 30px;
+            height: 30px;
+            font-size: 18px;
+            padding: 0;
+            margin: 0;
+        }
+        .trait-input input {
+            width: 50px;
+            height: 30px;
+            text-align: center;
+            margin: 0 5px;
+            padding: 0;
+            font-size: 1.1em;
+            border: 1px solid #ccc;
+            -moz-appearance: textfield;
+        }
+        .trait-input input::-webkit-inner-spin-button,
+        .trait-input input::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        .section-label {
+            grid-column: 1 / -1;
+            font-weight: bold;
+            margin: 10px 0 5px;
+            font-size: 1.2em;
+        }
+        .champ-button {
+            padding: 10px;
+            cursor: pointer;
+            font-size: 1.1em;
+            background-color: #f0f0f0;
+            outline: none;
+        }
+        .champ-button.selected.one-cost {
+            background-color: var(--one-cost-color);
+            outline: 2px solid black;
+        }
+        .champ-button.selected.two-cost {
+            background-color: var(--two-cost-color);
+            outline: 2px solid black;
+        }
+        .champ-button.selected.three-cost {
+            background-color: var(--three-cost-color);
+            outline: 2px solid black;
+        }
+        .champ-button.selected.four-cost {
+            background-color: var(--four-cost-color);
+            outline: 2px solid black;
+        }
+        .maxPop-button {
+            padding: 5px 10px;
+            cursor: pointer;
+            font-size: 1.1em;
+            margin-right: 10px;
+        }
+        .maxPop-button.selected {
+            background-color: lightgreen;
+            font-weight: bold;
+        }
+        #calculating {
+            color: red;
+            font-weight: bold;
+            display: none;
+        }
+        .result-grid {
+            display: grid;
+            grid-template-columns: 3fr 1fr;
+            align-items: center;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            padding: 10px;
+            background-color: #f0f0f0;
+        }
+        .result-grid .champions { grid-column: 1; }
+        .result-grid .traits { grid-column: 1; }
+        .result-grid .cost {
+            grid-column: 2;
+            grid-row: 1 / 3;
+            text-align: right;
+            font-weight: bold;
+        }
+        .incomplete {
+            color: grey;
+        }
+        .champ-name.one-cost {
+            color: var(--one-cost-color);
+        }
+        .champ-name.two-cost {
+            color: var(--two-cost-color);
+        }
+        .champ-name.three-cost {
+            color: var(--three-cost-color);
+        }
+        .champ-name.four-cost {
+            color: var(--four-cost-color);
+        }
+        #langSwitch {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+            background-color: #f0f0f0;
+            border: 1px solid #ccc;
+            padding: 5px 10px;
+            cursor: pointer;
+            width: 180px;
+            height: 50px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <button id="langSwitch" data-i18n="switch_to_chinese"></button>
+    <h1 data-i18n="title"></h1>
+    <p data-i18n="instructions"></p>
+    <h2 data-i18n="choose_board"></h2>
+    <form method="POST" id="inputForm">
+        <div>
+            <label data-i18n="max_population"></label>
+            <button type="button" class="maxPop-button selected" data-value="6">6</button>
+            <button type="button" class="maxPop-button" data-value="7">7</button>
+            <input type="hidden" id="maxPop" name="maxPop" value="6">
+        </div>
+        <br>
+        <div class="grid">
+            <div class="section-label" data-i18n="origin_traits"></div>
+            {% for trait in origin_traits %}
+                <div class="trait-row">
+                    <div class="trait-input">
+                        <button type="button" onclick="adjustEmblem('{{ trait }}', -1)">-</button>
+                        <input type="text" id="{{ trait }}" name="emblem_{{ trait }}" value="0" oninput="validateInput(this)">
+                        <button type="button" onclick="adjustEmblem('{{ trait }}', 1)">+</button>
+                    </div>
+                    <label for="{{ trait }}" data-i18n="trait_{{ trait }}"></label>
+                </div>
+            {% endfor %}
+            <div class="section-label" data-i18n="class_traits"></div>
+            {% for trait in class_traits %}
+                <div class="trait-row">
+                    <div class="trait-input">
+                        <button type="button" onclick="adjustEmblem('{{ trait }}', -1)">-</button>
+                        <input type="text" id="{{ trait }}" name="emblem_{{ trait }}" value="0" oninput="validateInput(this)">
+                        <button type="button" onclick="adjustEmblem('{{ trait }}', 1)">+</button>
+                    </div>
+                    <label for="{{ trait }}" data-i18n="trait_{{ trait }}"></label>
+                </div>
+            {% endfor %}
+        </div>
+        <div class="grid">
+            <div class="section-label" data-i18n="one_cost_champs"></div>
+            {% for champ in one_cost_champs %}
+                <button type="button" class="champ-button one-cost" data-champ="{{ champ }}" data-i18n="champ_{{ champ }}"></button>
+            {% endfor %}
+            <div class="section-label" data-i18n="two_cost_champs"></div>
+            {% for champ in two_cost_champs %}
+                <button type="button" class="champ-button two-cost" data-champ="{{ champ }}" data-i18n="champ_{{ champ }}"></button>
+            {% endfor %}
+            <div class="section-label" data-i18n="three_cost_champs"></div>
+            {% for champ in three_cost_champs %}
+                <button type="button" class="champ-button three-cost" data-champ="{{ champ }}" data-i18n="champ_{{ champ }}"></button>
+            {% endfor %}
+            <div class="section-label" data-i18n="four_cost_champs"></div>
+            {% for champ in four_cost_champs %}
+                <button type="button" class="champ-button four-cost" data-champ="{{ champ }}" data-i18n="champ_{{ champ }}"></button>
+            {% endfor %}
+        </div>
+        <input type="hidden" id="hadChamp" name="hadChamp" value="">
+        <input type="submit" data-i18n="calculate" value="">
+        <button type="button" id="resetButton" data-i18n="reset"></button>
+    </form>
+    <div id="calculating" data-i18n="calculating"></div>
+    <div id="results">
+        {% if result is defined %}
+            <h2>
+                {% if result|length == 1 %}
+                    <span data-i18n="result_one_combination"></span>
+                {% elif result|length == 0 %}
+                    <span data-i18n="result_no_combination"></span>
+                {% elif result|length >= 5 %}
+                    <span data-i18n="result_top_five_combinations"></span>
+                {% else %}
+                    <span data-i18n="result_combinations_found" data-count="{{ result|length }}"></span>
+                {% endif %}
+            </h2>
+            {% if result|length > 0 %}
+                {% for champ_list, traits, cost in result %}
+                    <div class="result-grid">
+                        <div class="champions">
+                            <strong data-i18n="champions_label"></strong>
+                            {% for champ in champ_list %}
+                                {% set cost_class = {1: 'one-cost', 2: 'two-cost', 3: 'three-cost', 4: 'four-cost'}[champ_dict[champ]['cost']] %}
+                                <span class="champ-name {{ cost_class }}" data-i18n="champ_{{ champ }}"></span>{% if not loop.last %}, {% endif %}
+                            {% endfor %}
+                        </div>
+                        <div class="traits">
+                            <strong data-i18n="traits_label"></strong>
+                            {% for trait, (count, threshold) in traits if count > 0 %}
+                                <span {% if count < threshold %}class="incomplete"{% endif %}>
+                                    <span data-i18n="trait_{{ trait }}"></span>: {{ count }}/{{ threshold }}
+                                </span>
+                                {% if not loop.last %}, {% endif %}
+                            {% endfor %}
+                        </div>
+                        <div class="cost"><strong data-i18n="cost_label"></strong> {{ cost }}</div>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endif %}
+    </div>
+    <script>
+        let currentLang = localStorage.getItem('preferredLang') || 'en';
+        const translations = {};
+        function loadTranslations(lang) {
+            fetch(`/static/translations/${lang}.json`)
+                .then(response => {
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                    return response.json();
+                })
+                .then(data => {
+                    translations[lang] = data;
+                    applyTranslations(lang);
+                    updateLangSwitchButton();
+                })
+                .catch(error => console.error('Error loading translations:', error));
+        }
+        function applyTranslations(lang) {
+            document.querySelectorAll('[data-i18n]').forEach(element => {
+                const key = element.getAttribute('data-i18n');
+                element.innerHTML = '';
+                let text = translations[lang][key] || `[${key}]`;
+                if (key === 'result_combinations_found' && element.hasAttribute('data-count')) {
+                    const count = element.getAttribute('data-count');
+                    text = text.replace('[[ count ]]', count);
+                }
+                if (element.tagName === 'INPUT' && element.type === 'submit') {
+                    element.value = text;
+                } else {
+                    element.innerHTML = text;
+                }
+            });
+        }
+        function updateLangSwitchButton() {
+            const button = document.getElementById('langSwitch');
+            const key = currentLang === 'en' ? 'switch_to_chinese' : 'switch_to_english';
+            button.innerHTML = translations[currentLang][key] || `[${key}]`;
+        }
+        document.getElementById('langSwitch').addEventListener('click', () => {
+            currentLang = currentLang === 'en' ? 'zh' : 'en';
+            localStorage.setItem('preferredLang', currentLang);
+            if (!translations[currentLang]) {
+                loadTranslations(currentLang);
+            } else {
+                applyTranslations(currentLang);
+                updateLangSwitchButton();
+            }
+        });
+        loadTranslations(currentLang);
+        function adjustEmblem(trait, delta) {
+            const input = document.getElementById(trait);
+            let value = parseInt(input.value) || 0;
+            value = Math.max(0, Math.min(9, value + delta));
+            input.value = value;
+        }
+        function validateInput(input) {
+            let value = parseInt(input.value);
+            if (isNaN(value) || value < 0 || value > 9) {
+                input.value = 0;
+            } else {
+                input.value = value;
+            }
+        }
+        document.addEventListener('DOMContentLoaded', function() {
+            const champButtons = document.querySelectorAll('.champ-button');
+            const selectedChamps = new Set();
+            champButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const champ = this.getAttribute('data-champ');
+                    if (selectedChamps.has(champ)) {
+                        selectedChamps.delete(champ);
+                        this.classList.remove('selected');
+                    } else {
+                        selectedChamps.add(champ);
+                        this.classList.add('selected');
+                    }
+                    document.getElementById('hadChamp').value = Array.from(selectedChamps).join(',');
+                });
+            });
+            const maxPopButtons = document.querySelectorAll('.maxPop-button');
+            maxPopButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    maxPopButtons.forEach(btn => btn.classList.remove('selected'));
+                    this.classList.add('selected');
+                    document.getElementById('maxPop').value = this.getAttribute('data-value');
+                });
+            });
+            const form = document.getElementById('inputForm');
+            form.addEventListener('submit', function(event) {
+                event.preventDefault();
+                const formData = new FormData(this);
+                const calculatingDiv = document.getElementById('calculating');
+                const resultsDiv = document.getElementById('results');
+                calculatingDiv.style.display = 'block';
+                resultsDiv.innerHTML = '';
+                fetch('/', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.text())
+                .then(data => {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(data, 'text/html');
+                    const newResults = doc.getElementById('results').innerHTML;
+                    resultsDiv.innerHTML = newResults;
+                    if (translations[currentLang]) {
+                        applyTranslations(currentLang);
+                        updateLangSwitchButton();
+                    } else {
+                        loadTranslations(currentLang);
+                    }
+                    calculatingDiv.style.display = 'none';
+                })
+                .catch(error => {
+                    console.error('Fetch error:', error);
+                    calculatingDiv.style.display = 'none';
+                    resultsDiv.innerHTML = '<p data-i18n="error_message"></p>';
+                    if (translations[currentLang]) {
+                        applyTranslations(currentLang);
+                        updateLangSwitchButton();
+                    } else {
+                        loadTranslations(currentLang);
+                    }
+                });
+            });
+            document.getElementById('resetButton').addEventListener('click', function() {
+                const maxPopButtons = document.querySelectorAll('.maxPop-button');
+                maxPopButtons.forEach(btn => {
+                    if (btn.getAttribute('data-value') === '6') {
+                        btn.classList.add('selected');
+                    } else {
+                        btn.classList.remove('selected');
+                    }
+                });
+                document.getElementById('maxPop').value = '6';
+                const emblemInputs = document.querySelectorAll('input[name^="emblem_"]');
+                emblemInputs.forEach(input => {
+                    input.value = '0';
+                });
+                const champButtons = document.querySelectorAll('.champ-button');
+                champButtons.forEach(button => {
+                    button.classList.remove('selected');
+                });
+                document.getElementById('hadChamp').value = '';
+                document.getElementById('results').innerHTML = '';
+            });
+            // Shutdown when page is closed
+            window.addEventListener('beforeunload', function(event) {
+                navigator.sendBeacon('/shutdown', new Blob([], {type: 'application/json'}));
+            });
+        });
+    </script>
+</body>
+</html>
